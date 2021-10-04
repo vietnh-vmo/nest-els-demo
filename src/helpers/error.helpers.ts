@@ -6,7 +6,7 @@ import {
   ExceptionFilter,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { StatusCodes } from '@modules/_base/base.interface';
+import { StatusCodes } from '@modules/base/base.interface';
 
 export class UserError extends HttpException {
   constructor(status: StatusCodes, code?: HttpStatus) {

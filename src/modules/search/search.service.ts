@@ -1,6 +1,6 @@
 import { UserError } from '@helper/error.helpers';
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { StatusCodes } from '@modules/_base/base.interface';
+import { StatusCodes } from '@modules/base/base.interface';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 
 @Injectable()

@@ -2,10 +2,16 @@ import { Module } from '@nestjs/common';
 import { BrandsModule } from '@modules/brands/brands.module';
 import { SearchModule } from '@modules/search/search.module';
 import { ProductsModule } from '@modules/products/products.module';
-import { DatabaseModule } from '@modules/database/database.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ormConfig } from '@configs/database.configs';
 
 @Module({
-  imports: [DatabaseModule, SearchModule, ProductsModule, BrandsModule],
+  imports: [
+    TypeOrmModule.forRoot(ormConfig()),
+    SearchModule,
+    ProductsModule,
+    BrandsModule,
+  ],
   controllers: [],
   providers: [],
 })

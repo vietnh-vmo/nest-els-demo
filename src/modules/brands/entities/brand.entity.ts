@@ -1,11 +1,14 @@
-import { BaseStatus } from '@modules/_base/base.interface';
-import { Column, Model, Table } from 'sequelize-typescript';
+import { BaseStatus } from '@modules/base/base.interface';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-@Table
-export class Brand extends Model {
-  @Column
+@Entity({ name: 'brands' })
+export class Brand {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
   name: string;
 
-  @Column
+  @Column()
   status: BaseStatus;
 }

@@ -1,28 +1,40 @@
 import {
-  Table,
-  Model,
   Column,
-  BelongsTo,
-  ForeignKey,
-} from 'sequelize-typescript';
-import { BaseStatus } from '@modules/_base/base.interface';
+  Entity,
+  JoinTable,
+  ManyToOne,
+  CreateDateColumn,
+  UpdateDateColumn,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { BaseStatus } from '@modules/base/base.interface';
 import { Brand } from '@modules/brands/entities/brand.entity';
 
-@Table
-export class Product extends Model {
-  @Column
+@Entity({ name: 'products' })
+export class Product {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
   name: string;
 
-  @Column
+  @Column()
   status: BaseStatus;
 
-  @Column
+  @Column()
   price: number;
 
-  @ForeignKey(() => Brand)
-  @Column
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @ManyToOne(() => Brand)
+  @JoinTable()
+  brand: Brand;
+
   brandId: number;
 
-  @BelongsTo(() => Brand, 'brandId')
-  brand: Brand;
+  set: any;
 }

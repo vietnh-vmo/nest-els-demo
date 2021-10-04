@@ -1,26 +1,16 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
 import { ProductsService } from './products.service';
 import { ProductsController } from './products.controller';
 import { SearchModule } from '@modules/search/search.module';
-import { Brand } from '@modules/brands/entities/brand.entity';
 import { ProductElasticIndex } from './elastic/products.elastic';
+import { Brand } from '@modules/brands/entities/brand.entity';
 
 @Module({
-  imports: [SearchModule],
+  imports: [TypeOrmModule.forFeature([Product, Brand]), SearchModule],
   controllers: [ProductsController],
-  providers: [
-    ProductsService,
-    ProductElasticIndex,
-    {
-      provide: 'PRODUCTS',
-      useValue: Product,
-    },
-    {
-      provide: 'BRANDS',
-      useValue: Brand,
-    },
-  ],
+  providers: [ProductsService, ProductElasticIndex],
   exports: [ProductsService],
 })
 export class ProductsModule {}

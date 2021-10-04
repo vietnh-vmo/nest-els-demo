@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseStatus } from '@modules/_base/base.interface';
+import { BaseStatus } from '@modules/base/base.interface';
 import { IsEnum, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class UpdateProductDto {

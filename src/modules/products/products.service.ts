@@ -1,21 +1,23 @@
+import { Repository } from 'typeorm';
 import { UserError } from '@helper/error.helpers';
 import { Product } from './entities/product.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { ListProductsDto } from './dto/list-products.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Brand } from '@modules/brands/entities/brand.entity';
-import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ProductElasticIndex } from './elastic/products.elastic';
 import { ElasticSearchDto } from '@modules/search/dto/es-body.dto';
-import { BaseStatus, StatusCodes } from '@modules/_base/base.interface';
+import { BaseStatus, StatusCodes } from '@modules/base/base.interface';
 
 @Injectable()
 export class ProductsService {
   constructor(
-    @Inject('PRODUCTS')
-    private productsRepo: typeof Product,
-    @Inject('BRANDS')
-    private brandsRepo: typeof Brand,
+    @InjectRepository(Product)
+    private readonly productsRepo: Repository<Product>,
+    @InjectRepository(Brand)
+    private readonly brandsRepo: Repository<Brand>,
     private readonly productEs: ProductElasticIndex,
   ) {}
 
@@ -23,19 +25,20 @@ export class ProductsService {
   //  handle ES actions failure
 
   async create(body: CreateProductDto): Promise<Product> {
-    const product = await this.productsRepo.create<Product>(body);
+    const brand = await this.brandsRepo.findOne({ id: body.brandId });
+
+    if (!brand)
+      throw new UserError(StatusCodes.BRAND_NOT_FOUND, HttpStatus.NOT_FOUND);
+
+    const product = await this.productsRepo.save({ ...body, brand });
 
     //  insert ES
-    const data = await this.productsRepo.findOne<Product>({
-      where: { id: product.id },
-      include: 'brand',
-    });
-    await this.productEs.insertProductDocument(data);
+    await this.productEs.insertProductDocument(product);
 
     return product;
   }
 
-  async findAll(listQuery: ListProductsDto): Promise<Product[]> {
+  async search(listQuery: ListProductsDto): Promise<Product[]> {
     const page = Number(listQuery.page) || 1;
     const size = Number(listQuery.limit) || 20;
     const from = (Number(page) - 1) * Number(size);
@@ -76,10 +79,10 @@ export class ProductsService {
   }
 
   async findOne(id: number): Promise<Product> {
-    const product = await this.productsRepo.findOne<Product>({
-      where: { id },
-      include: 'brand',
-    });
+    const product = await this.productsRepo.findOne(
+      { id },
+      { relations: ['brand'] },
+    );
 
     if (!product)
       throw new UserError(StatusCodes.PRODUCT_NOT_FOUND, HttpStatus.NOT_FOUND);
@@ -88,30 +91,40 @@ export class ProductsService {
   }
 
   async update(id: number, body: UpdateProductDto): Promise<Product> {
-    const product = await this.productsRepo.findOne<Product>({
-      where: { id },
-      include: 'brand',
-    });
+    let product = await this.productsRepo.findOne(
+      { id },
+      { relations: ['brand'] },
+    );
 
     if (!product)
       throw new UserError(StatusCodes.PRODUCT_NOT_FOUND, HttpStatus.NOT_FOUND);
 
-    product.set(body);
-    const data = await product.save();
+    if (String(body.brandId) !== String(product.brandId)) {
+      const brand = await this.brandsRepo.findOne({ id: body.brandId });
 
-    //  update data
+      if (!brand)
+        throw new UserError(StatusCodes.BRAND_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    product = {
+      ...product,
+      ...body,
+    };
+    const data = await this.productsRepo.save(product);
+
+    //  update ES
     await this.productEs.updateProductDocument(product);
 
     return data;
   }
 
   async remove(id: number): Promise<boolean> {
-    const product = await this.productsRepo.findOne<Product>({ where: { id } });
+    const product = await this.productsRepo.findOne(id);
 
     if (!product)
       throw new UserError(StatusCodes.PRODUCT_NOT_FOUND, HttpStatus.NOT_FOUND);
 
-    const data = !!(await this.productsRepo.destroy({ where: { id } }));
+    const data = !!(await this.productsRepo.remove(product));
 
     //  delete ES
     await this.productEs.deleteProductDocument(id);

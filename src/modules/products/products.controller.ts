@@ -4,20 +4,20 @@ import {
   Post,
   Body,
   Param,
+  Query,
   Delete,
   Controller,
-  Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Product } from './entities/product.entity';
 import { ProductsService } from './products.service';
+import { ListProductsDto } from './dto/list-products.dto';
+import { StatusCodes } from '@modules/base/base.interface';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { StatusCodes } from '@modules/_base/base.interface';
-import { BaseResponse } from '@modules/_base/dto/base-response.dto';
-import { ListResponse } from '@modules/_base/dto/list-response.dto';
-import { BooleanResponse } from '@modules/_base/dto/bool-response.dto';
-import { ListProductsDto } from './dto/list-products.dto';
+import { BaseResponse } from '@modules/base/dto/base-response.dto';
+import { ListResponse } from '@modules/base/dto/list-response.dto';
+import { BooleanResponse } from '@modules/base/dto/bool-response.dto';
 
 @ApiTags('products')
 @Controller('products')
@@ -38,7 +38,7 @@ export class ProductsController {
   async findAll(
     @Query() query: ListProductsDto,
   ): Promise<ListResponse<Product>> {
-    const data = await this.productsService.findAll(query);
+    const data = await this.productsService.search(query);
 
     return {
       status: StatusCodes.SUCCESS,

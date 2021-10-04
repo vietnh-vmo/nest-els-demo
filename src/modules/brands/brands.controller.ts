@@ -11,10 +11,10 @@ import { Brand } from './entities/brand.entity';
 import { BrandsService } from './brands.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
-import { StatusCodes } from '@modules/_base/base.interface';
-import { BaseResponse } from '@modules/_base/dto/base-response.dto';
-import { ListResponse } from '@modules/_base/dto/list-response.dto';
-import { BooleanResponse } from '@modules/_base/dto/bool-response.dto';
+import { StatusCodes } from '@modules/base/base.interface';
+import { BaseResponse } from '@modules/base/dto/base-response.dto';
+import { ListResponse } from '@modules/base/dto/list-response.dto';
+import { BooleanResponse } from '@modules/base/dto/bool-response.dto';
 
 @Controller('brands')
 export class BrandsController {
