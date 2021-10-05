@@ -1,4 +1,3 @@
-import { Repository } from 'typeorm';
 import { Brand } from './entities/brand.entity';
 import { UserError } from '@helper/error.helpers';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,12 +5,13 @@ import { CreateBrandDto } from './dto/create-brand.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { StatusCodes } from '@modules/base/base.interface';
+import { BrandsRepository } from './constants/products.repository';
 
 @Injectable()
 export class BrandsService {
   constructor(
     @InjectRepository(Brand)
-    private readonly brandsRepo: Repository<Brand>,
+    private readonly brandsRepo: BrandsRepository,
   ) {}
 
   async create(body: CreateBrandDto): Promise<Brand> {
@@ -50,9 +50,8 @@ export class BrandsService {
     if (!brand)
       throw new UserError(StatusCodes.BRAND_NOT_FOUND, HttpStatus.NOT_FOUND);
 
-    const data = await this.brandsRepo.remove(brand);
-
-    console.log(data);
+    brand.deletedAt = new Date();
+    const data = await this.brandsRepo.save(brand);
 
     return !!data;
   }

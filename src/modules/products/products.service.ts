@@ -1,4 +1,3 @@
-import { Repository } from 'typeorm';
 import { UserError } from '@helper/error.helpers';
 import { Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -7,18 +6,20 @@ import { ListProductsDto } from './dto/list-products.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Brand } from '@modules/brands/entities/brand.entity';
-import { ProductElasticIndex } from './elastic/products.elastic';
+import { BaseElasticIndex } from '../base/base.elastic.service';
 import { ElasticSearchDto } from '@modules/search/dto/es-body.dto';
+import { ProductsRepository } from './constants/products.repository';
 import { BaseStatus, StatusCodes } from '@modules/base/base.interface';
+import { BrandsRepository } from '@modules/brands/constants/products.repository';
 
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
-    private readonly productsRepo: Repository<Product>,
+    private readonly productsRepo: ProductsRepository,
     @InjectRepository(Brand)
-    private readonly brandsRepo: Repository<Brand>,
-    private readonly productEs: ProductElasticIndex,
+    private readonly brandsRepo: BrandsRepository,
+    private readonly productEs: BaseElasticIndex<Product>,
   ) {}
 
   //  TODO: Apply transaction
@@ -33,7 +34,7 @@ export class ProductsService {
     const product = await this.productsRepo.save({ ...body, brand });
 
     //  insert ES
-    await this.productEs.insertProductDocument(product);
+    await this.productEs.insertDocument(product, product.id);
 
     return product;
   }
@@ -73,7 +74,7 @@ export class ProductsService {
 
     if (listQuery.price) body.body.sort = [{ price: listQuery.price }];
 
-    const data = await this.productEs.searchProductDocuments(body);
+    const data = await this.productEs.searchDocuments(body);
 
     return data.body.hits.hits;
   }
@@ -113,7 +114,7 @@ export class ProductsService {
     const data = await this.productsRepo.save(product);
 
     //  update ES
-    await this.productEs.updateProductDocument(product);
+    await this.productEs.updateDocument(product, id);
 
     return data;
   }
@@ -124,11 +125,12 @@ export class ProductsService {
     if (!product)
       throw new UserError(StatusCodes.PRODUCT_NOT_FOUND, HttpStatus.NOT_FOUND);
 
-    const data = !!(await this.productsRepo.remove(product));
+    product.deletedAt = new Date();
+    const data = await this.brandsRepo.save(product);
 
     //  delete ES
-    await this.productEs.deleteProductDocument(id);
+    await this.productEs.deleteDocument(id);
 
-    return data;
+    return !!data;
   }
 }

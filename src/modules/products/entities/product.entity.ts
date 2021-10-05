@@ -30,11 +30,12 @@ export class Product {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Column({ default: null })
+  deletedAt: Date;
+
   @ManyToOne(() => Brand)
   @JoinTable()
   brand: Brand;
 
   brandId: number;
-
-  set: any;
 }

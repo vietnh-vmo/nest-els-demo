@@ -7,6 +7,21 @@ import { ElasticsearchService } from '@nestjs/elasticsearch';
 export class SearchService {
   constructor(private readonly esService: ElasticsearchService) {}
 
+  async createIndex(indexData: any): Promise<any> {
+    if (!this.esService.indices.exists(indexData)) {
+      const data = await this.esService.indices.create(indexData);
+
+      if (!data)
+        throw new UserError(
+          StatusCodes.FAILURE,
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+
+      return data;
+    }
+    return true;
+  }
+
   async insertIndex(bulkData: any): Promise<any> {
     const data = await this.esService.bulk(bulkData);
 
