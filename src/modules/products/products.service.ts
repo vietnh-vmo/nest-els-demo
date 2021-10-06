@@ -1,6 +1,7 @@
 import { UserError } from '@helper/error.helpers';
-import { Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Product } from './entities/product.entity';
+import { EntityManager, getConnection } from 'typeorm';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ListProductsDto } from './dto/list-products.dto';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -22,21 +23,31 @@ export class ProductsService {
     private readonly productEs: BaseElasticIndex<Product>,
   ) {}
 
-  //  TODO: Apply transaction
-  //  handle ES actions failure
-
   async create(body: CreateProductDto): Promise<Product> {
-    const brand = await this.brandsRepo.findOne({ id: body.brandId });
+    let product;
+    const brand = await this.brandsRepo.findOne({
+      id: body.brandId,
+      deletedAt: null,
+    });
 
     if (!brand)
       throw new UserError(StatusCodes.BRAND_NOT_FOUND, HttpStatus.NOT_FOUND);
 
-    const product = await this.productsRepo.save({ ...body, brand });
+    await getConnection().transaction(async (entityManager: EntityManager) => {
+      product = await entityManager.save(Product, {
+        ...body,
+        brand,
+      });
 
-    //  insert ES
-    await this.productEs.insertDocument(product, product.id);
+      //  insert ES
+      await this.productEs.insertDocument(product, product.id);
+      return true;
+    });
 
-    return product;
+    return (
+      product ||
+      new UserError(StatusCodes.ES_FAILURE, HttpStatus.INTERNAL_SERVER_ERROR)
+    );
   }
 
   async search(listQuery: ListProductsDto): Promise<Product[]> {
@@ -76,12 +87,12 @@ export class ProductsService {
 
     const data = await this.productEs.searchDocuments(body);
 
-    return data.body.hits.hits;
+    return data.body ? data.body.hits.hits : [];
   }
 
   async findOne(id: number): Promise<Product> {
     const product = await this.productsRepo.findOne(
-      { id },
+      { id, deletedAt: null },
       { relations: ['brand'] },
     );
 
@@ -92,8 +103,9 @@ export class ProductsService {
   }
 
   async update(id: number, body: UpdateProductDto): Promise<Product> {
-    let product = await this.productsRepo.findOne(
-      { id },
+    let data;
+    const product = await this.productsRepo.findOne(
+      { id, deletedAt: null },
       { relations: ['brand'] },
     );
 
@@ -107,30 +119,44 @@ export class ProductsService {
         throw new UserError(StatusCodes.BRAND_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    product = {
-      ...product,
-      ...body,
-    };
-    const data = await this.productsRepo.save(product);
+    await getConnection().transaction(async (entityManager: EntityManager) => {
+      const updateBody = {
+        ...product,
+        ...body,
+      };
 
-    //  update ES
-    await this.productEs.updateDocument(product, id);
+      data = await entityManager.save(Product, updateBody);
 
-    return data;
+      //  update ES
+      await this.productEs.updateDocument(updateBody, id);
+      return true;
+    });
+
+    return (
+      data ||
+      new UserError(StatusCodes.ES_FAILURE, HttpStatus.INTERNAL_SERVER_ERROR)
+    );
   }
 
   async remove(id: number): Promise<boolean> {
-    const product = await this.productsRepo.findOne(id);
+    let data;
+    const product = await this.productsRepo.findOne({ id, deletedAt: null });
 
     if (!product)
       throw new UserError(StatusCodes.PRODUCT_NOT_FOUND, HttpStatus.NOT_FOUND);
 
-    product.deletedAt = new Date();
-    const data = await this.brandsRepo.save(product);
+    await getConnection().transaction(async (entityManager: EntityManager) => {
+      product.deletedAt = new Date();
+      data = await entityManager.save(Product, product);
 
-    //  delete ES
-    await this.productEs.deleteDocument(id);
+      //  delete ES
+      await this.productEs.deleteDocument(id);
+      return true;
+    });
 
-    return !!data;
+    return (
+      data ||
+      new UserError(StatusCodes.ES_FAILURE, HttpStatus.INTERNAL_SERVER_ERROR)
+    );
   }
 }
